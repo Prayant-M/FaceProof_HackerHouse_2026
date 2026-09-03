@@ -4,7 +4,7 @@
 *.key
 
 # pipeline output (evidence bundles, crops, deployments, reports)
-out/
+out/*
 !out/.gitkeep
 
 # python
