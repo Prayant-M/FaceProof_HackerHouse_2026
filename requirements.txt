@@ -1,0 +1,30 @@
+# FaceProof runtime dependencies
+# Tested on Python 3.11. Do NOT use 3.13/3.14 -- onnxruntime and insightface
+# do not publish wheels for them yet and pip will try to build from source.
+
+# --- face detection + encoding
+insightface==0.7.3
+onnxruntime==1.18.1
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+
+# --- fingerprinting
+Pillow==10.4.0
+ImageHash==4.3.1
+
+# --- search
+requests==2.32.3
+
+# --- blockchain
+web3==7.6.0
+eth-utils==5.1.0
+# eth_utils.keccak needs an explicit backend; merkle.py uses it directly
+eth-hash[pycryptodome]==0.7.0
+py-solc-x==2.0.3
+
+# --- ux + config
+rich==13.9.4
+python-dotenv==1.0.1
+
+# --- tests
+pytest==8.3.4

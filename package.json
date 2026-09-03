@@ -1,0 +1,15 @@
+{
+  "name": "faceproof-contracts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Solidity tests and local chain for FaceProof. The Python pipeline does not depend on this.",
+  "scripts": {
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "compile": "hardhat compile"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0"
+  }
+}

@@ -1,0 +1,8 @@
+# Optional extras.
+#
+# playwright  -- the free, no-API-key Google Lens provider (a scraper).
+#                After installing:  playwright install chromium
+#
+# Install with:  pip install -r requirements-optional.txt
+
+playwright==1.49.1

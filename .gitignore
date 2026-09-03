@@ -1,0 +1,48 @@
+# secrets -- MUST stay out of history
+.env
+*.pem
+*.key
+
+# pipeline output (evidence bundles, crops, deployments, reports)
+out/
+!out/.gitkeep
+
+# python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# node / hardhat
+node_modules/
+.hardhat/
+artifacts/
+cache/
+
+# models
+models/
+*.onnx
+
+# local corpus images (may contain personal data)
+samples/corpus/*
+!samples/corpus/README.md
+!samples/corpus/.gitkeep
+
+# probe images -- do not commit other people's faces
+samples/*.jpg
+samples/*.jpeg
+samples/*.png
+!samples/README.md
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# task brief -- not part of the deliverable
+task*.docx
