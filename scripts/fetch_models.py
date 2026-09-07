@@ -1,7 +1,6 @@
 """Pre-download the InsightFace models.
 
-The first call to FaceAnalysis pulls ~300 MB. Run this once BEFORE recording
-the demo, otherwise the video stalls on a progress bar.
+The first call to FaceAnalysis pulls ~300 MB.
 
     python scripts/fetch_models.py
 """

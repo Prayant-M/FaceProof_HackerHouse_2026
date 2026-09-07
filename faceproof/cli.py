@@ -285,7 +285,10 @@ def do_tamper_demo(args) -> None:
     })
 
     env["bundle"]["match"][field] = tampered_value
-    env["evidence_hash"] = evidence.recompute(env)
+    # evidence_hash deliberately keeps the ORIGINAL anchored digest. That is what
+    # a tampered file looks like in the wild: an edited bundle still carrying the
+    # hash it was anchored under. Overwriting it here would hide the drift and
+    # send verify() looking for a hash that was never on chain.
     path = config.OUT / f"ev_{env['scan_id']}_TAMPERED.json"
     evidence.save(env, path)
     report.out(f"tampered copy -> {path}", style="dim")
