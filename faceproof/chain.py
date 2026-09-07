@@ -76,9 +76,11 @@ class Chain:
         self.address = Web3.to_checksum_address(address)
         self.contract = self.w3.eth.contract(address=self.address, abi=abi)
 
-        if not config.PRIVATE_KEY:
-            raise ChainError("PRIVATE_KEY missing from .env")
-        self.acct = self.w3.eth.account.from_key(config.PRIVATE_KEY)
+        key = config.private_key_for(self.network)
+        problem = config.key_error(self.network, key)
+        if problem:
+            raise ChainError(problem)
+        self.acct = self.w3.eth.account.from_key(key)
 
     # ------------------------------------------------------------ helpers
     @property

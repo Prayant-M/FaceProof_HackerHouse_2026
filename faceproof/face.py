@@ -7,12 +7,53 @@ no compiler dependency on Windows (unlike dlib / face_recognition).
 
 from __future__ import annotations
 
+import contextlib
+import io
+import os
+import sys
+import warnings
 from pathlib import Path
 
 import numpy as np
 
 from . import config
 from .hashutil import embedding_hash
+
+# InsightFace announces every model file it loads with bare print() calls, and
+# scikit-image raises a FutureWarning from inside insightface's own alignment
+# code on every encode. Neither is actionable and both land in the middle of a
+# rendered panel, which ruins a screen recording. Set FACEPROOF_VERBOSE=1 to see
+# them again when debugging a model-loading problem.
+VERBOSE = os.getenv("FACEPROOF_VERBOSE", "0") != "0"
+
+if not VERBOSE:
+    warnings.filterwarnings(
+        "ignore", category=FutureWarning, module=r"insightface\..*"
+    )
+    warnings.filterwarnings("ignore", message=r".*`estimate` is deprecated.*")
+
+
+@contextlib.contextmanager
+def _quiet_load():
+    """Swallow the loader's stdout chatter, but never swallow a real failure.
+
+    Only stdout is captured; exceptions propagate untouched, and anything the
+    loader printed is replayed to stderr if it raised -- so a genuine model
+    download or ONNX error stays fully diagnosable.
+    """
+    if VERBOSE:
+        yield
+        return
+
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            yield
+    except Exception:
+        captured = buf.getvalue()
+        if captured:
+            print(captured, file=sys.stderr)
+        raise
 
 # cv2 and insightface are imported lazily. They are heavy (and unavailable on
 # Python 3.13+), and the pure-logic modules that import this one -- verify.py in
@@ -28,14 +69,22 @@ def _cv2():
 def _get_app():
     global _app
     if _app is None:
-        from insightface.app import FaceAnalysis
+        with _quiet_load():
+            try:
+                import onnxruntime
+                # 3 = ERROR. Silences the ONNX Runtime C++ provider banner.
+                onnxruntime.set_default_logger_severity(3)
+            except Exception:
+                pass
 
-        _app = FaceAnalysis(
-            name=config.INSIGHTFACE_MODEL,
-            providers=["CPUExecutionProvider"],
-            allowed_modules=["detection", "recognition"],
-        )
-        _app.prepare(ctx_id=-1, det_size=(config.DET_SIZE, config.DET_SIZE))
+            from insightface.app import FaceAnalysis
+
+            _app = FaceAnalysis(
+                name=config.INSIGHTFACE_MODEL,
+                providers=["CPUExecutionProvider"],
+                allowed_modules=["detection", "recognition"],
+            )
+            _app.prepare(ctx_id=-1, det_size=(config.DET_SIZE, config.DET_SIZE))
     return _app
 
 

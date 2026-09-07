@@ -20,7 +20,9 @@ web3==7.6.0
 eth-utils==5.1.0
 # eth_utils.keccak needs an explicit backend; merkle.py uses it directly
 eth-hash[pycryptodome]==0.7.0
-py-solc-x==2.0.3
+# 2.0.5 minimum: 2.0.3 hardcodes solc-bin.ethereum.org, which no longer resolves.
+# The live mirror is binaries.soliditylang.org.
+py-solc-x==2.0.5
 
 # --- ux + config
 rich==13.9.4

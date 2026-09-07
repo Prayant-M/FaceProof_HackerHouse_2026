@@ -14,11 +14,24 @@ blockchain so the record can be re-verified — and tampering detected — later
 
 | | |
 |---|---|
-| **Blockchain** | Base Sepolia (chain id 84532) · also runs fully offline on a local Anvil/Hardhat node |
-| **Contract** | `contracts/FaceEvidenceRegistry.sol` — deployed address in `out/deployment_base-sepolia.json` |
+| **Blockchain** | **Live on Ethereum Sepolia (chain id 11155111)** · Base Sepolia (84532) supported · also runs fully offline on a local Anvil/Hardhat node |
+| **Contract** | `contracts/FaceEvidenceRegistry.sol` — [`0xcEcede3653BEf3942F8B7a6c37F7BFc10f7081b7`](https://sepolia.etherscan.io/address/0xcEcede3653BEf3942F8B7a6c37F7BFc10f7081b7) on Sepolia; address + ABI in `out/deployment_<chain>.json` |
 | **Face model** | InsightFace `buffalo_l` — RetinaFace detection + ArcFace 512-d embedding |
 | **Search** | SerpApi Google Lens · SerpApi Yandex Images · headless Playwright Lens · offline corpus |
 | **Website** | None. The task does not require one; the CLI *is* the product. |
+
+### Verify it yourself, without running anything
+
+The registry is deployed on a public testnet, so the integrity claim is checkable by a
+stranger with a browser:
+
+1. Open [the contract on Etherscan](https://sepolia.etherscan.io/address/0xcEcede3653BEf3942F8B7a6c37F7BFc10f7081b7)
+2. **Contract → Read Contract**
+3. Call `recordCount()` to see how many records exist, `recordAt(i)` to read one, or paste
+   an `evidenceHash` into `verify(bytes32)` to fetch that record
+
+No wallet, no clone, no access to the author's machine. Deploy transaction:
+[`0xcdcd8e2e…4c062a`](https://sepolia.etherscan.io/tx/0xcdcd8e2e0e8fc4c953f7a5559fd1573d80c09bcfd96514950f31467ffc4c062a).
 
 ---
 
@@ -65,12 +78,14 @@ irreversible digest is published. `tests/test_evidence.py` asserts the property.
 
 ### Requirements
 
-- **Python 3.11** — *not 3.13 or 3.14.* `onnxruntime` and `insightface` do not publish
-  wheels for those yet and pip will try to build from source.
+- **Python 3.11 or 3.12** — *not 3.13 or 3.14.* `onnxruntime` publishes no cp313/cp314
+  wheels, and `insightface` ships source-only, so pip falls back to compiling. On Windows
+  that also means Microsoft C++ Build Tools. This build runs on 3.12.
 - Node 18+ — only for the local test chain and the Solidity tests. The pipeline itself
   has no Node dependency.
 - A SerpApi key (free tier, ~100 searches/month) for the live search path.
-- A throwaway wallet with Base Sepolia testnet ETH.
+- A throwaway wallet with testnet ETH on whichever public chain you target (free — see
+  [SETUP.md §5](SETUP.md#5-testnet--faucets-rpc-explorer)).
 
 ### 1. Install
 
@@ -84,7 +99,7 @@ cd faceproof
 <summary>Linux / macOS / manual</summary>
 
 ```bash
-python3.11 -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python scripts/fetch_models.py     # pre-download ~300 MB of models
 cp .env.example .env
@@ -97,12 +112,17 @@ Edit `.env`:
 
 ```ini
 SERPAPI_KEY=your_key_here
-PRIVATE_KEY=0xyour_throwaway_testnet_key
+
+# per-network keys; PRIVATE_KEY is the shared fallback, the local chain needs neither
+PRIVATE_KEY_SEPOLIA=0xyour_throwaway_testnet_key
+SEPOLIA_RPC=https://ethereum-sepolia-rpc.publicnode.com
 BASE_SEPOLIA_RPC=https://sepolia.base.org
 DEFAULT_CHAIN=local
 ```
 
 > `.env` is gitignored. Use a wallet that holds testnet funds and nothing else.
+> `--chain local` needs no key at all — it falls back to the Hardhat dev account, which is
+> **refused** on any public network because everyone has it.
 
 ### 3. Deploy the contract
 
@@ -113,19 +133,26 @@ npx hardhat node                       # terminal 1
 python scripts/deploy.py --chain local # terminal 2
 ```
 
-**Base Sepolia** (public, has an explorer):
+**Public testnet** (has an explorer, so anyone can verify):
 
 ```bash
-# fund your address first: https://www.alchemy.com/faucets/base-sepolia
-python scripts/deploy.py --chain base-sepolia
+python -m faceproof info                  # prints the address that needs funding
+# paste that ADDRESS (never the key) into a faucet, wait ~1 min:
+#   Ethereum Sepolia -> https://cloud.google.com/application/web3/faucet/ethereum/sepolia
+#   Base Sepolia     -> https://portal.cdp.coinbase.com/products/faucet
+python scripts/deploy.py --chain sepolia   # or --chain base-sepolia
 ```
+
+Testnet ETH is free and worthless — it only pays gas. Deploying costs ~0.0002 ETH.
+Note that a balance is **per chain**: funding Ethereum Sepolia does nothing for Base
+Sepolia, even though the address is identical.
 
 ### 4. Run the pipeline
 
 ```bash
 python -m faceproof run \
     --image samples/me.jpg \
-    --chain base-sepolia \
+    --chain sepolia \
     --i-have-consent \
     --html
 ```
@@ -136,13 +163,27 @@ Or stage by stage — this is what the demo recording does:
 python -m faceproof info
 python -m faceproof scan   --image samples/me.jpg
 python -m faceproof search --scan <scan_id>
-python -m faceproof anchor --evidence <scan_id> --chain base-sepolia
-python -m faceproof verify --evidence <scan_id> --chain base-sepolia
-python -m faceproof tamper-demo --evidence <scan_id> --chain base-sepolia
+python -m faceproof anchor --evidence <scan_id> --chain sepolia
+python -m faceproof verify --evidence <scan_id> --chain sepolia
+python -m faceproof tamper-demo --evidence <scan_id> --chain sepolia
 ```
 
-`.\demo.ps1 -Image samples\me.jpg -Chain base-sepolia` drives that whole sequence with a
-pause between stages.
+`.\demo.ps1 -Image samples\me.jpg -Chain sepolia` drives that whole sequence with a pause
+between stages. Swap `sepolia` for `local` to rehearse for free.
+[SCRIPT.md](SCRIPT.md) is the shot-by-shot recording script.
+
+### What a run produces
+
+| Where | What |
+|---|---|
+| `out/scan_<id>/` | `original.jpg` (EXIF intact — chain of custody) · `clean.jpg` (EXIF stripped) · `probe_crop.jpg` (the only file that leaves the machine) · `annotated.jpg` · `embedding.npy` — **raw biometric vector, local only** |
+| `out/scan_<id>.json` | hashes, bbox, det score, embedding hash, timestamps |
+| `out/ev_<id>.json` | canonical evidence bundle + `evidence_hash` + full audit trail; the `anchor` receipt is filled in after stage 6 |
+| `out/case_<id>.html` | case report, with `--html` |
+| on chain | one `anchor()` tx — `evidenceHash`, `pHash`, `embeddingHash`, block timestamp, submitter, optional CID. **Digests only** |
+
+Nothing outside `out/` and the chain is written. Full breakdown, including what leaves the
+machine and what it costs: [SETUP.md §7](SETUP.md#7-running-the-pipeline).
 
 ---
 
@@ -212,15 +253,22 @@ the entire evidentiary claim, and allowing an overwrite would defeat the registr
 
 ## Which blockchain, and why
 
-**Base Sepolia** (chain id `84532`) is the default public target:
+Three networks, one code path — only the RPC URL and the explorer prefix differ.
 
-- free, reliable faucets (Alchemy, Coinbase, QuickNode)
-- ~2-second blocks, so a demo does not stall waiting for confirmation
-- BaseScan gives anyone a public URL to independently verify the transaction
+| `--chain` | Chain id | Blocks | Cost | Use it for |
+|---|---|---|---|---|
+| `local` | 31337 | instant | free | all development and rehearsal |
+| `sepolia` | 11155111 | ~12 s | faucet ETH | **the live public record** |
+| `base-sepolia` | 84532 | ~2 s | faucet ETH | faster public demo, if you can fund it |
+
+**Ethereum Sepolia holds the live deployment.** Base Sepolia has nicer 2-second blocks,
+but in practice its faucets (Alchemy, QuickNode) gate on holding real mainnet ETH, while
+the Google Cloud Sepolia faucet needs only a Google account. Base Sepolia stays fully
+supported — `deploy.py --chain base-sepolia` — for anyone who can get funds there.
 
 A **local Anvil/Hardhat node** (`--chain local`) runs the identical code path with no
-faucet, no network, and no cost. Ethereum Sepolia is wired up as a third option
-(`--chain sepolia`) but its faucets are frequently dry.
+faucet, no network, and no cost. Develop there; spend faucet ETH only on the take you
+actually record.
 
 Only hashes are stored. A record is 4 × `bytes32` + a timestamp + a count + an address +
 an optional IPFS CID string.
@@ -275,13 +323,14 @@ surveillance, doxxing, or any identification with consequences for the person id
 - **Content can disappear.** The matched post can be deleted or edited by its author.
   FaceProof preserves the fingerprint, not the content, unless you pin the bundle to IPFS
   and pass the CID.
-- **Public-testnet dependency.** Base Sepolia is a testnet; its history carries no
-  guarantee of permanence. For a real deployment, use a mainnet with Merkle batching.
+- **Public-testnet dependency.** Sepolia and Base Sepolia are testnets; their history
+  carries no guarantee of permanence, and testnet ETH has no value. For a real deployment,
+  use a mainnet with Merkle batching.
 - **Image hosting for SerpApi.** The probe crop is briefly uploaded to a public throwaway
   host so the search engine can fetch it. That is a real (if short-lived) exposure of the
   probe image, and it is recorded in the audit trail rather than hidden.
-- **Windows / Python 3.11 pin.** Newer Python versions lack wheels for `onnxruntime` and
-  `insightface`.
+- **Python 3.11/3.12 pin.** Newer Python versions lack `onnxruntime` wheels, and
+  `insightface` is source-only — on Windows that also means MSVC Build Tools.
 
 ---
 
@@ -303,6 +352,9 @@ contracts/            FaceEvidenceRegistry.sol + Hardhat tests
 scripts/              deploy.py, fetch_models.py, make_corpus.py
 tests/                pytest suite
 BUILD_PLAN.md         design rationale, schedule, demo storyboard
+OVERVIEW.md           one-page project summary + architecture diagram
+SETUP.md              machine-specific runbook: install, keys, faucets, troubleshooting
+SCRIPT.md             screen-recording script, shot by shot
 ```
 
 ## License

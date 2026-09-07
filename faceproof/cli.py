@@ -360,8 +360,20 @@ def do_info(args) -> None:
             rows[f"provider:{key}"] = f"error: {e}"
     for net, cfg in config.CHAINS.items():
         dep = config.deployment_path(net)
-        rows[f"chain:{net}"] = ("deployed " + json.loads(dep.read_text())["address"]
-                                if dep.is_file() else "not deployed")
+        state = ("deployed " + json.loads(dep.read_text())["address"]
+                 if dep.is_file() else "not deployed")
+        # Show which key signs here, and why it might refuse, without ever
+        # printing the key itself -- only the address it derives to.
+        key = config.private_key_for(net)
+        problem = config.key_error(net, key)
+        if problem:
+            signer = "NO USABLE KEY" if not key else "dev key refused on public net"
+        else:
+            from eth_account import Account
+            signer = Account.from_key(key).address
+            if config.is_dev_key(key):
+                signer += "  (hardhat dev)"
+        rows[f"chain:{net}"] = f"{state}   signer {signer}"
     rows["threshold"] = config.FACE_MATCH_THRESHOLD
     rows["out dir"] = str(config.OUT)
     report.kv_panel("ENVIRONMENT", rows)

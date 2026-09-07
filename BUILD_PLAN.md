@@ -195,6 +195,17 @@ and a judge may well ask about it. The flag is a feature, not a liability.
 Show **both** in the recording: local first (guaranteed), then the public testnet txhash with the
 explorer open. That combination reads as "this person ships."
 
+> **Shipped 2026-09-07 — plan vs. actual.** The public deployment landed on **Ethereum
+> Sepolia**, not Base Sepolia. Reason: every Base Sepolia faucet reachable on the day
+> (Alchemy, QuickNode) gates on holding real mainnet ETH, while the Google Cloud Ethereum
+> Sepolia faucet needs only a Google account and paid out 0.05 ETH immediately. The row
+> above had Sepolia's faucets marked "often dry"; in practice the gating on Base was the
+> harder blocker. Base Sepolia support is unchanged in code — `--chain base-sepolia` works
+> the moment that wallet is funded.
+>
+> Live contract: `0xcEcede3653BEf3942F8B7a6c37F7BFc10f7081b7` · chain id 11155111 ·
+> 819,763 gas · [Etherscan](https://sepolia.etherscan.io/address/0xcEcede3653BEf3942F8B7a6c37F7BFc10f7081b7)
+
 **Contract tooling.** Compile and deploy from Python with `py-solc-x`, so the runtime pipeline has
 no Node dependency at all. Keep Hardhat purely for the Solidity unit tests — good signal, zero
 runtime cost.
@@ -674,8 +685,9 @@ with a live `rich` progress panel per stage.
 - **Checkpoint:** `scan → search → evidence bundle` yields a real post URL.
 
 ### Day 3 — Saturday Sept 6: chain + polish
-- [ ] Base Sepolia faucet; deploy the contract; save the address into `.env`
-- [ ] `chain.py` anchor/verify against Base Sepolia; capture a real txhash
+- [x] Public testnet faucet; deploy the contract; deployment record written to `out/`
+      *(landed on Ethereum Sepolia — see the note in §3.4)*
+- [x] `chain.py` anchor/verify against a public testnet; capture a real txhash
 - [ ] `merkle.py` + `anchorBatch` + `verifyInclusion` end to end
 - [ ] `verify.py` three-verdict logic + `tamper-demo`
 - [ ] `report.py` rich console + HTML case file
@@ -738,9 +750,13 @@ Face scan → genuine web/social search → blockchain-anchored, tamper-evident 
 (exact copy-pasteable commands, tested from a clean clone)
 
 ## Which blockchain
-Base Sepolia (chain id 84532). Contract: `0x...` — [BaseScan](...)
-Also runs fully offline against a local Anvil/Hardhat node (`--chain local`).
-Why Base Sepolia: free faucet, 2-second blocks, public explorer for independent verification.
+Ethereum Sepolia (chain id 11155111). Contract:
+`0xcEcede3653BEf3942F8B7a6c37F7BFc10f7081b7` —
+[Etherscan](https://sepolia.etherscan.io/address/0xcEcede3653BEf3942F8B7a6c37F7BFc10f7081b7)
+Base Sepolia (84532) is supported by the same code path, and it also runs fully offline
+against a local Anvil/Hardhat node (`--chain local`).
+Why a public testnet at all: a stranger can open the explorer, call `verify(evidenceHash)`
+under **Read Contract**, and confirm the record without trusting this repo or its author.
 
 ## Privacy design
 No biometric data is ever written on chain. Embeddings are quantized to int8 and SHA-256'd; the
@@ -791,7 +807,7 @@ Probe images are of the author, or of public figures with public posts. The CLI 
 
 - [ ] `git clone` → follow the README → `faceproof run` works on a machine that never built it
 - [ ] A real social post URL appears in the output, produced by a live search call
-- [ ] A Base Sepolia transaction hash resolves on BaseScan
+- [x] A public-testnet transaction hash resolves on a block explorer *(Sepolia / Etherscan)*
 - [ ] `verify` prints ✅ and `tamper-demo` prints ❌ within the same recording
 - [ ] README covers what / how to run / which chain / limitations
 - [ ] `.env` is absent from the repo history

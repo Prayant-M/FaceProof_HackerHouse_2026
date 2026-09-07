@@ -27,6 +27,20 @@ except ImportError:  # web3 6.x
 
 SRC = config.ROOT / "contracts" / "FaceEvidenceRegistry.sol"
 
+# Printed when the deployer has no gas money. Testnet ETH only -- it is free,
+# has no market value, and cannot be moved to or from a mainnet.
+FAUCETS = {
+    "base-sepolia": [
+        ("Coinbase", "https://portal.cdp.coinbase.com/products/faucet"),
+        ("Alchemy", "https://www.alchemy.com/faucets/base-sepolia"),
+        ("QuickNode", "https://faucet.quicknode.com/base/sepolia"),
+    ],
+    "sepolia": [
+        ("Alchemy", "https://www.alchemy.com/faucets/ethereum-sepolia"),
+        ("Google", "https://cloud.google.com/application/web3/faucet/ethereum/sepolia"),
+    ],
+}
+
 
 def compile_contract(version: str) -> tuple[list, str]:
     import solcx
@@ -66,8 +80,10 @@ def main() -> int:
     if not cfg["rpc"]:
         print(f"no RPC for {args.chain} -- set it in .env", file=sys.stderr)
         return 2
-    if not config.PRIVATE_KEY:
-        print("PRIVATE_KEY missing from .env", file=sys.stderr)
+    key = config.private_key_for(args.chain)
+    problem = config.key_error(args.chain, key)
+    if problem:
+        print(problem, file=sys.stderr)
         return 2
 
     print(f"compiling {SRC.name} with solc {args.solc} ...")
@@ -82,12 +98,21 @@ def main() -> int:
         print(f"cannot reach {cfg['rpc']}", file=sys.stderr)
         return 2
 
-    acct = w3.eth.account.from_key(config.PRIVATE_KEY)
+    acct = w3.eth.account.from_key(key)
     bal = w3.from_wei(w3.eth.get_balance(acct.address), "ether")
     print(f"deployer {acct.address}  balance {bal} ETH  chain id {w3.eth.chain_id}")
     if bal == 0:
-        print("WARNING: zero balance -- fund this address from a faucet first",
+        # Continuing here only produces `gas required exceeds allowance (0)`
+        # wrapped in a web3 traceback, which is a confusing way to say "no
+        # funds". Stop with the address and the faucets instead.
+        print(f"\nzero balance -- nothing to pay gas with on {args.chain}.\n",
               file=sys.stderr)
+        print(f"  fund this address:  {acct.address}\n", file=sys.stderr)
+        for name, url in FAUCETS.get(args.chain, []):
+            print(f"    {name:10s} {url}", file=sys.stderr)
+        print("\nfunds usually land within a minute. re-run this command after.",
+              file=sys.stderr)
+        return 2
 
     Contract = w3.eth.contract(abi=abi, bytecode=bytecode)
     tx = Contract.constructor().build_transaction({
@@ -106,12 +131,16 @@ def main() -> int:
         print("deployment reverted", file=sys.stderr)
         return 1
 
+    tx_hex = rcpt.transactionHash.hex()
+    if not tx_hex.startswith("0x"):  # web3 7 returns bare hex
+        tx_hex = "0x" + tx_hex
+
     record = {
         "network": args.chain,
         "chain_id": w3.eth.chain_id,
         "address": rcpt.contractAddress,
         "deployer": acct.address,
-        "tx_hash": rcpt.transactionHash.hex(),
+        "tx_hash": tx_hex,
         "block": rcpt.blockNumber,
         "gas_used": rcpt.gasUsed,
         "solc": args.solc,
@@ -122,7 +151,7 @@ def main() -> int:
     print(f"\ndeployed at {rcpt.contractAddress}")
     print(f"gas used    {rcpt.gasUsed:,}")
     if cfg["explorer"]:
-        print(f"explorer    {cfg['explorer']}{rcpt.transactionHash.hex()}")
+        print(f"explorer    {cfg['explorer']}{tx_hex}")
     print(f"saved       {dep_path}")
     return 0
 

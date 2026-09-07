@@ -72,6 +72,63 @@ DEFAULT_CHAIN = os.getenv("DEFAULT_CHAIN", "local")
 PRIVATE_KEY = os.getenv("PRIVATE_KEY", "")
 SOLC_VERSION = os.getenv("SOLC_VERSION", "0.8.24")
 
+# Hardhat/Anvil account #0. Published in their docs, funded with 10000 fake ETH
+# on every fresh node, and worthless anywhere else. Used ONLY as the local-chain
+# fallback so `--chain local` works with no configuration at all.
+#
+# It is deliberately never a fallback for a public network: it is a key every
+# bot on every public chain sweeps on sight, and a submitter address anyone can
+# forge, which would make the `submitter` field on a public record meaningless.
+_HARDHAT_DEV_KEY = (
+    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+)
+
+
+def private_key_for(network: str) -> str:
+    """Resolve the signing key for one network.
+
+    Resolution order:
+      1. PRIVATE_KEY_<NETWORK>   e.g. PRIVATE_KEY_BASE_SEPOLIA
+      2. PRIVATE_KEY             the shared fallback
+      3. the Hardhat dev key     local chain only
+
+    This lets a throwaway funded wallet sign on a public testnet while the local
+    chain keeps using the free pre-funded dev account, from a single .env.
+    """
+    specific = os.getenv(f"PRIVATE_KEY_{network.upper().replace('-', '_')}", "")
+    if specific:
+        return specific
+    if PRIVATE_KEY:
+        return PRIVATE_KEY
+    if network == "local":
+        return _HARDHAT_DEV_KEY
+    return ""
+
+
+def is_dev_key(key: str) -> bool:
+    """True if this is the publicly-known Hardhat/Anvil dev key."""
+    return bool(key) and key.lower().removeprefix("0x") == (
+        _HARDHAT_DEV_KEY.removeprefix("0x")
+    )
+
+
+def key_error(network: str, key: str) -> str | None:
+    """Return a human-readable reason this key must not sign on this network."""
+    if not key:
+        return (
+            f"no signing key for {network!r}. Set PRIVATE_KEY_"
+            f"{network.upper().replace('-', '_')} or PRIVATE_KEY in .env"
+        )
+    if network != "local" and is_dev_key(key):
+        return (
+            f"refusing to sign on {network!r} with the public Hardhat dev key.\n"
+            "Everyone has that key, so the `submitter` field would prove nothing "
+            "and sweeper bots drain the address on sight.\n"
+            f"Set PRIVATE_KEY_{network.upper().replace('-', '_')} in .env to a "
+            "funded throwaway wallet."
+        )
+    return None
+
 
 def deployment_path(network: str) -> Path:
     return OUT / f"deployment_{network}.json"
