@@ -1,6 +1,6 @@
 # FaceProof — Screen Recording Script (Public Chain)
 
-**Target length:** 8–9 minutes · **Chain:** Ethereum Sepolia, public · **Search:** live SerpApi
+**Target length:** 9–10 minutes · **Chain:** Ethereum Sepolia, public · **Search:** live SerpApi
 **Deadline:** Sept 7, 2026, 11:59 PM — submit the form only once the video link opens in incognito.
 
 Everything in this take happens on a **public** chain, so a reviewer can open a block
@@ -268,10 +268,28 @@ One root, one transaction, then per-record inclusion proofs verified on chain.
 >
 > So there's a batch mode: it builds a Merkle tree over all the evidence records, and puts just the single root hash on chain in one transaction. Gas is flat no matter how many records you batch. And you can still prove any individual record was part of that batch afterwards, and the contract verifies that proof on chain — that's what's running now."
 
-### 8:55 – 9:15 · Close
+### 8:55 – 9:25 · What it can't do
 
-**Screen:** switch back to the overview page — scroll to the deployment strip at the top, so
-the contract address is the last thing on screen.
+**Screen:** scroll the overview page to **Limitations, and what scale would demand**. Let the
+three group headings and a couple of the rows be visible — do not read them out.
+
+**Say:**
+> "Before I finish, the part I think matters most, and the brief actually asks for it: what this doesn't do.
+>
+> Three things I'd want you to hear from me rather than find out later.
+>
+> First — recall depends entirely on whether the person has a public image footprint. Someone with no public photos correctly returns nothing. That's the pipeline working, not failing, but it does mean coverage is a property of the subject, not of my code.
+>
+> Second — 0.40 is a tuned threshold, not proof. ArcFace has documented accuracy differences across demographic groups, and one global cutoff hides that. At any real scale you'd calibrate per slice, publish the precision and recall, and send anything near the boundary to a human.
+>
+> And third, the one people get wrong about blockchains: anchoring proves *when* a claim was recorded and that it hasn't changed since. It does not make the claim true. A confidently wrong identification anchors just as cleanly as a correct one. The chain is a notary, not a judge.
+>
+> The page has the full list, each one paired with what I'd actually change to fix it at scale — batched anchoring on an L2 instead of a testnet, signing through a KMS instead of a key in a dotenv file, salted commitments so the on-chain hash can't confirm an outsider's guess, and a real vector index instead of leaning on someone else's crawl."
+
+### 9:25 – 9:45 · Close
+
+**Screen:** scroll the overview page back to the top, so the contract address and the live
+Sepolia indicator are the last thing on screen.
 
 **Say:**
 > "So, end to end: a face scan goes in, it gets encoded locally, a live search finds candidates, every candidate is independently face-verified instead of trusted, the result is packed into a canonical evidence bundle, and three fingerprints of that bundle are anchored on a public blockchain.
@@ -300,6 +318,7 @@ just implied by what's on screen:
 | Independently checkable | 6:25 – 7:15 | "you can open that URL right now and get the same answer" |
 | Only hashes reach the chain | 0:35 – 1:05 and 6:25 | "the only thing that crosses that bottom line is four 32-byte fingerprints" |
 | No biometric data published | 1:25 – 2:15 | "it never goes on the blockchain… you cannot rebuild my face from it" |
+| Known limitations stated | 8:55 – 9:25 | "recall depends entirely on public image footprint… 0.40 is a tuned threshold, not proof" |
 | No website required | 0:00 – 0:35 | "there's no website — the brief said one wasn't needed" |
 
 ---
@@ -313,6 +332,9 @@ just implied by what's on screen:
 - Sepolia blocks are ~12 s. Do **not** sit in silence waiting — the anchor explanation at
   5:25 is written to fill exactly that gap. If it confirms early, keep talking anyway.
 - Say the contract address out loud once, slowly, or leave it on screen for a few seconds.
+- The limitations beat is the first thing you'll be tempted to cut for time. Cut the Merkle
+  segment instead — stating limitations is an explicit requirement in the brief, and a
+  reviewer trusts a build more when its author names the edges first.
 - If SerpApi fails mid-take: stop, switch to `--provider yandex` (also SerpApi, different engine)
   or `--provider playwright` (no key, scrapes Lens directly), and restart the take. Do **not**
   silently fall back to the local corpus while recording — if you ever do use `--provider local`,
